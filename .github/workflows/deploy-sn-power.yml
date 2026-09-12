@@ -37,6 +37,9 @@ jobs:
           BASE_PATH: /${{ github.event.repository.name }}/
         run: npm run build
 
+      - name: Add 404.html fallback for client-side routing
+        run: cp dist/public/index.html dist/public/404.html
+
       - name: Upload build output
         uses: actions/upload-pages-artifact@v3
         with:
