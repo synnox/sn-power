@@ -13,6 +13,8 @@ export interface AuthUser {
   role: AuthUserRole;
   bodyWeight: number | null;
   category: string | null;
+  /** False until the person has filled in their own profile (weight class, focus, etc). */
+  profileComplete: boolean;
 }
 
 export interface Athlete {
@@ -26,6 +28,7 @@ export interface Athlete {
   lastSessionDate: string | null;
   nextSessionDate: string | null;
   progress: number;
+  profileComplete: boolean;
 }
 
 export interface AthleteInput {
@@ -33,8 +36,6 @@ export interface AthleteInput {
   password: string;
   firstName: string;
   lastName: string;
-  bodyWeight?: number | null;
-  category?: string | null;
 }
 
 export interface AthleteUpdate {
@@ -43,6 +44,11 @@ export interface AthleteUpdate {
   bodyWeight?: number | null;
   category?: string | null;
   status?: AthleteStatus;
+}
+
+export interface ProfileInput {
+  bodyWeight?: number | null;
+  category?: string | null;
 }
 
 export interface Exercise {
@@ -212,94 +218,16 @@ function today() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function exercise(
-  id: number,
-  sessionId: number,
-  name: string,
-  category: string,
-  sets: number,
-  reps: number,
-  loadValue: number,
-  loadMode: ExerciseLoadMode = 'fixed',
-): Exercise {
-  return {
-    id,
-    sessionId,
-    name,
-    category,
-    order: id,
-    sets,
-    reps,
-    loadMode,
-    loadValue,
-    percentage: loadMode === 'percentage' ? 75 : null,
-    targetRpe: 7,
-    restSeconds: 180,
-    tempo: null,
-    notes: null,
-    completed: false,
-    actualLoad: null,
-    actualReps: null,
-    actualRpe: null,
-    comment: null,
-  };
-}
-
 function seedDb(): LocalDb {
-  const sessions: TrainingSession[] = [
-    {
-      id: 1, athleteId: 2, programId: 1, name: 'Lower A', sessionDate: '2026-09-09',
-      status: 'completed', notes: null, weekNumber: 1,
-      exercises: [
-        exercise(1, 1, 'Back Squat', 'squat', 5, 5, 150),
-        exercise(2, 1, 'Bench Press', 'bench', 4, 6, 94),
-        exercise(3, 1, 'Romanian Deadlift', 'deadlift', 3, 8, 120),
-      ],
-    },
-    {
-      id: 2, athleteId: 2, programId: 1, name: 'Upper A', sessionDate: '2026-09-12',
-      status: 'planned', notes: null, weekNumber: 1,
-      exercises: [
-        exercise(4, 2, 'Back Squat', 'squat', 5, 5, 150, 'percentage'),
-        exercise(5, 2, 'Bench Press', 'bench', 4, 6, 94, 'percentage'),
-        exercise(6, 2, 'Romanian Deadlift', 'deadlift', 3, 8, 120),
-      ],
-    },
-    {
-      id: 3, athleteId: 3, programId: 2, name: 'Lower A', sessionDate: '2026-09-09',
-      status: 'completed', notes: null, weekNumber: 1,
-      exercises: [
-        exercise(7, 3, 'Back Squat', 'squat', 5, 5, 135),
-        exercise(8, 3, 'Bench Press', 'bench', 4, 6, 82.5),
-        exercise(9, 3, 'Deadlift', 'deadlift', 3, 5, 165),
-      ],
-    },
-    {
-      id: 4, athleteId: 3, programId: 2, name: 'Upper A', sessionDate: '2026-09-12',
-      status: 'planned', notes: null, weekNumber: 1,
-      exercises: [
-        exercise(10, 4, 'Deadlift', 'deadlift', 4, 4, 165),
-        exercise(11, 4, 'Bench Press', 'bench', 5, 5, 82.5),
-        exercise(12, 4, 'Barbell Row', 'accessory', 4, 8, 70),
-      ],
-    },
-  ];
-
+  // No demo data: a brand-new install starts completely empty.
+  // The very first person to open the app creates the real coach account
+  // (see useGetSetupStatus / useRegisterCoach below), and every athlete,
+  // program, and session from then on is real data the coach enters.
   return {
-    users: [
-      { id: 1, username: 'admin', password: 'admin123', firstName: 'SN', lastName: 'Coach', role: 'coach', bodyWeight: null, category: 'Coach' },
-      { id: 2, username: 'athlete1', password: 'athlete123', firstName: 'Thomas', lastName: 'Martin', role: 'athlete', bodyWeight: 92.5, category: '-93 kg' },
-      { id: 3, username: 'athlete2', password: 'athlete123', firstName: 'Lucas', lastName: 'Bernard', role: 'athlete', bodyWeight: 83.2, category: '-83 kg' },
-    ],
-    athletes: [
-      { id: 2, username: 'athlete1', firstName: 'Thomas', lastName: 'Martin', bodyWeight: 92.5, category: '-93 kg', status: 'active', lastSessionDate: '2026-09-09', nextSessionDate: '2026-09-12', progress: 4.5 },
-      { id: 3, username: 'athlete2', firstName: 'Lucas', lastName: 'Bernard', bodyWeight: 83.2, category: '-83 kg', status: 'active', lastSessionDate: '2026-09-09', nextSessionDate: '2026-09-12', progress: 4.5 },
-    ],
-    programs: [
-      { id: 1, athleteId: 2, name: 'Strength base · Cycle 01', method: '5/3/1 inspired', trainingMaxes: { squat: 200, bench: 125, deadlift: 235 }, blocks: [] },
-      { id: 2, athleteId: 3, name: 'Strength base · Cycle 01', method: '5/3/1 inspired', trainingMaxes: { squat: 180, bench: 110, deadlift: 215 }, blocks: [] },
-    ],
-    sessions,
+    users: [],
+    athletes: [],
+    programs: [],
+    sessions: [],
     exerciseLibrary: [
       { id: 1, name: 'Back Squat', category: 'squat', isMainLift: true },
       { id: 2, name: 'Bench Press', category: 'bench', isMainLift: true },
@@ -308,7 +236,7 @@ function seedDb(): LocalDb {
       { id: 5, name: 'Barbell Row', category: 'accessory', isMainLift: false },
       { id: 6, name: 'Overhead Press', category: 'press', isMainLift: true },
     ],
-    nextId: 20,
+    nextId: 1,
   };
 }
 
@@ -449,13 +377,39 @@ export function useGetCurrentUser(options?: QueryOptions) {
   return localQuery(getGetCurrentUserQueryKey(), () => currentUser(), options);
 }
 
+export const getGetSetupStatusQueryKey = () => ['local', 'setup-status'] as const;
+
+/** Whether this browser has never had a coach account created yet. */
+export function useGetSetupStatus() {
+  return localQuery(getGetSetupStatusQueryKey(), () => ({ needsSetup: readDb().users.length === 0 }));
+}
+
+/** Creates the one real coach account for this workspace. Only works once. */
+export function useRegisterCoach() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ data }: MutationVariables<{ username: string; password: string; firstName: string; lastName: string }>) => {
+      const db = readDb();
+      if (db.users.length > 0) throw new Error('Setup has already been completed on this device.');
+      const id = db.nextId++;
+      const user = { id, username: data.username, password: data.password, firstName: data.firstName, lastName: data.lastName, role: 'coach' as const, bodyWeight: null, category: null, profileComplete: false };
+      db.users.push(user);
+      writeDb(db);
+      window.localStorage.setItem(USER_KEY, String(id));
+      const { password: _password, ...safeUser } = user;
+      return safeUser;
+    },
+    onSuccess: () => { void queryClient.invalidateQueries(); },
+  });
+}
+
 export function useLogin() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ data }: MutationVariables<{ username: string; password: string }>) => {
       const db = readDb();
       const user = db.users.find(item => item.username === data.username && item.password === data.password);
-      if (!user) throw new Error('Invalid demo credentials');
+      if (!user) throw new Error('Incorrect username or password.');
       window.localStorage.setItem(USER_KEY, String(user.id));
       const { password: _password, ...safeUser } = user;
       return safeUser;
@@ -542,6 +496,26 @@ export function useListExerciseLibrary() {
   return localQuery(getListExerciseLibraryQueryKey(), () => readDb().exerciseLibrary);
 }
 
+/** The signed-in person fills in their own profile (weight class / coaching focus, body weight). */
+export function useCompleteProfile() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ data }: MutationVariables<ProfileInput>) => {
+      const db = readDb();
+      const userId = Number(window.localStorage.getItem(USER_KEY));
+      const user = db.users.find(item => item.id === userId);
+      if (!user) throw new Error('You are not signed in.');
+      Object.assign(user, { bodyWeight: data.bodyWeight ?? null, category: data.category ?? null, profileComplete: true });
+      const athlete = db.athletes.find(item => item.id === userId);
+      if (athlete) Object.assign(athlete, { bodyWeight: data.bodyWeight ?? null, category: data.category ?? null, profileComplete: true });
+      writeDb(db);
+      const { password: _password, ...safeUser } = user;
+      return safeUser;
+    },
+    onSuccess: () => { void queryClient.invalidateQueries(); },
+  });
+}
+
 export function useCreateAthlete() {
   return localMutation(({ data }: MutationVariables<AthleteInput>) => {
     const db = readDb();
@@ -551,15 +525,16 @@ export function useCreateAthlete() {
       username: data.username,
       firstName: data.firstName,
       lastName: data.lastName,
-      bodyWeight: data.bodyWeight ?? null,
-      category: data.category ?? null,
+      bodyWeight: null,
+      category: null,
       status: 'active',
       lastSessionDate: null,
       nextSessionDate: null,
       progress: 0,
+      profileComplete: false,
     };
     db.athletes.push(athlete);
-    db.users.push({ ...athlete, role: 'athlete', password: data.password, category: athlete.category });
+    db.users.push({ id, username: data.username, password: data.password, firstName: data.firstName, lastName: data.lastName, role: 'athlete', bodyWeight: null, category: null, profileComplete: false });
     db.programs.push({ id: id * 10, athleteId: id, name: 'New strength cycle', method: 'Custom', trainingMaxes: { squat: 0, bench: 0, deadlift: 0 }, blocks: [] });
     writeDb(db);
     return athlete;
