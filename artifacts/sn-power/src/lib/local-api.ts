@@ -5,6 +5,14 @@ export type AthleteStatus = 'active' | 'paused';
 export type TrainingSessionStatus = 'planned' | 'in_progress' | 'completed';
 export type ExerciseLoadMode = 'fixed' | 'percentage' | 'rpe';
 
+export interface PersonalRecords {
+  squat: number | null;
+  bench: number | null;
+  deadlift: number | null;
+}
+
+const emptyRecords = (): PersonalRecords => ({ squat: null, bench: null, deadlift: null });
+
 export interface AuthUser {
   id: number;
   username: string;
@@ -13,6 +21,9 @@ export interface AuthUser {
   role: AuthUserRole;
   bodyWeight: number | null;
   category: string | null;
+  records: PersonalRecords;
+  /** "YYYY-MM" they started training, or null if not given. */
+  powerliftingSince: string | null;
   /** False until the person has filled in their own profile (weight class, focus, etc). */
   profileComplete: boolean;
 }
@@ -24,6 +35,8 @@ export interface Athlete {
   lastName: string;
   bodyWeight: number | null;
   category: string | null;
+  records: PersonalRecords;
+  powerliftingSince: string | null;
   status: AthleteStatus;
   lastSessionDate: string | null;
   nextSessionDate: string | null;
@@ -31,24 +44,21 @@ export interface Athlete {
   profileComplete: boolean;
 }
 
-export interface AthleteInput {
-  username: string;
-  password: string;
-  firstName: string;
-  lastName: string;
-}
-
 export interface AthleteUpdate {
   firstName?: string;
   lastName?: string;
   bodyWeight?: number | null;
   category?: string | null;
+  records?: PersonalRecords;
+  powerliftingSince?: string | null;
   status?: AthleteStatus;
 }
 
 export interface ProfileInput {
   bodyWeight?: number | null;
   category?: string | null;
+  records?: PersonalRecords;
+  powerliftingSince?: string | null;
 }
 
 export interface Exercise {
@@ -221,7 +231,7 @@ function today() {
 function seedDb(): LocalDb {
   // No demo data: a brand-new install starts completely empty.
   // The very first person to open the app creates the real coach account
-  // (see useGetSetupStatus / useRegisterCoach below), and every athlete,
+  // (see useGetSetupStatus / useRegister below), and every athlete,
   // program, and session from then on is real data the coach enters.
   return {
     users: [],
@@ -245,6 +255,18 @@ function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
+function normalizeDb(db: LocalDb): LocalDb {
+  for (const user of db.users as Array<{ records?: PersonalRecords; powerliftingSince?: string | null }>) {
+    if (!user.records) user.records = emptyRecords();
+    if (user.powerliftingSince === undefined) user.powerliftingSince = null;
+  }
+  for (const athlete of db.athletes as Array<{ records?: PersonalRecords; powerliftingSince?: string | null }>) {
+    if (!athlete.records) athlete.records = emptyRecords();
+    if (athlete.powerliftingSince === undefined) athlete.powerliftingSince = null;
+  }
+  return db;
+}
+
 function readDb(): LocalDb {
   if (typeof window === 'undefined') return seedDb();
   const raw = window.localStorage.getItem(DB_KEY);
@@ -254,7 +276,7 @@ function readDb(): LocalDb {
     return seeded;
   }
   try {
-    return JSON.parse(raw) as LocalDb;
+    return normalizeDb(JSON.parse(raw) as LocalDb);
   } catch {
     const seeded = seedDb();
     window.localStorage.setItem(DB_KEY, JSON.stringify(seeded));
@@ -385,15 +407,21 @@ export function useGetSetupStatus() {
 }
 
 /** Creates the one real coach account for this workspace. Only works once. */
-export function useRegisterCoach() {
+/** Creates an account. The very first account on this device becomes the coach; every one after that is an athlete. */
+export function useRegister() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ data }: MutationVariables<{ username: string; password: string; firstName: string; lastName: string }>) => {
       const db = readDb();
-      if (db.users.length > 0) throw new Error('Setup has already been completed on this device.');
+      if (db.users.some(item => item.username === data.username)) throw new Error('That username is already taken.');
+      const role: AuthUserRole = db.users.length === 0 ? 'coach' : 'athlete';
       const id = db.nextId++;
-      const user = { id, username: data.username, password: data.password, firstName: data.firstName, lastName: data.lastName, role: 'coach' as const, bodyWeight: null, category: null, profileComplete: false };
+      const user = { id, username: data.username, password: data.password, firstName: data.firstName, lastName: data.lastName, role, bodyWeight: null, category: null, records: emptyRecords(), powerliftingSince: null, profileComplete: false };
       db.users.push(user);
+      if (role === 'athlete') {
+        db.athletes.push({ id, username: data.username, firstName: data.firstName, lastName: data.lastName, bodyWeight: null, category: null, records: emptyRecords(), powerliftingSince: null, status: 'active', lastSessionDate: null, nextSessionDate: null, progress: 0, profileComplete: false });
+        db.programs.push({ id: id * 10, athleteId: id, name: 'New strength cycle', method: 'Custom', trainingMaxes: { squat: 0, bench: 0, deadlift: 0 }, blocks: [] });
+      }
       writeDb(db);
       window.localStorage.setItem(USER_KEY, String(id));
       const { password: _password, ...safeUser } = user;
@@ -497,6 +525,7 @@ export function useListExerciseLibrary() {
 }
 
 /** The signed-in person fills in their own profile (weight class / coaching focus, body weight). */
+/** The signed-in person fills in or edits their own profile: weight class, body weight, current 1RMs, and how long they've trained. Used both for the mandatory first-time onboarding and for later edits from Settings. */
 export function useCompleteProfile() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -505,39 +534,15 @@ export function useCompleteProfile() {
       const userId = Number(window.localStorage.getItem(USER_KEY));
       const user = db.users.find(item => item.id === userId);
       if (!user) throw new Error('You are not signed in.');
-      Object.assign(user, { bodyWeight: data.bodyWeight ?? null, category: data.category ?? null, profileComplete: true });
+      const patch = { bodyWeight: data.bodyWeight ?? null, category: data.category ?? null, records: data.records ?? user.records ?? emptyRecords(), powerliftingSince: data.powerliftingSince ?? null, profileComplete: true };
+      Object.assign(user, patch);
       const athlete = db.athletes.find(item => item.id === userId);
-      if (athlete) Object.assign(athlete, { bodyWeight: data.bodyWeight ?? null, category: data.category ?? null, profileComplete: true });
+      if (athlete) Object.assign(athlete, patch);
       writeDb(db);
       const { password: _password, ...safeUser } = user;
       return safeUser;
     },
     onSuccess: () => { void queryClient.invalidateQueries(); },
-  });
-}
-
-export function useCreateAthlete() {
-  return localMutation(({ data }: MutationVariables<AthleteInput>) => {
-    const db = readDb();
-    const id = db.nextId++;
-    const athlete: Athlete = {
-      id,
-      username: data.username,
-      firstName: data.firstName,
-      lastName: data.lastName,
-      bodyWeight: null,
-      category: null,
-      status: 'active',
-      lastSessionDate: null,
-      nextSessionDate: null,
-      progress: 0,
-      profileComplete: false,
-    };
-    db.athletes.push(athlete);
-    db.users.push({ id, username: data.username, password: data.password, firstName: data.firstName, lastName: data.lastName, role: 'athlete', bodyWeight: null, category: null, profileComplete: false });
-    db.programs.push({ id: id * 10, athleteId: id, name: 'New strength cycle', method: 'Custom', trainingMaxes: { squat: 0, bench: 0, deadlift: 0 }, blocks: [] });
-    writeDb(db);
-    return athlete;
   });
 }
 
@@ -548,7 +553,7 @@ export function useUpdateAthlete() {
     if (!athlete) throw new Error('Athlete not found');
     Object.assign(athlete, data);
     const user = db.users.find(item => item.id === id);
-    if (user) Object.assign(user, { firstName: data.firstName ?? user.firstName, lastName: data.lastName ?? user.lastName, bodyWeight: data.bodyWeight ?? user.bodyWeight, category: data.category ?? user.category });
+    if (user) Object.assign(user, { firstName: data.firstName ?? user.firstName, lastName: data.lastName ?? user.lastName, bodyWeight: data.bodyWeight ?? user.bodyWeight, category: data.category ?? user.category, records: data.records ?? user.records, powerliftingSince: data.powerliftingSince ?? user.powerliftingSince });
     writeDb(db);
     return athlete;
   });
