@@ -71,7 +71,7 @@ function OnboardingPage({ user }: { user: AuthUser }) {
         records: { squat: Number(f.get('squat')) || null, bench: Number(f.get('bench')) || null, deadlift: Number(f.get('deadlift')) || null, press: Number(f.get('press')) || null },
         powerliftingSince: String(f.get('powerliftingSince') || '') || null,
       },
-    }, { onError: () => setError('Could not save your profile.') });
+    }, { onSuccess: () => { if (isAthlete) sessionStorage.setItem('sn-offer-531', '1'); }, onError: () => setError('Could not save your profile.') });
   };
   return <AuthShell eyebrow="One last step" title={<>Welcome, {user.firstName}.</>}>
     <p className="mt-2 text-sm text-muted-foreground">{isAthlete ? 'A couple of details so your coach can build the right program for you.' : 'A couple of details to finish setting up your coaching profile.'}</p>
@@ -82,6 +82,26 @@ function OnboardingPage({ user }: { user: AuthUser }) {
       {error && <p className="rounded-lg bg-destructive/10 p-3 text-xs font-semibold text-destructive" data-testid="status-profile-error">{error}</p>}
       <Button className="w-full py-3" type="submit" disabled={complete.isPending} data-testid="button-profile-submit">{complete.isPending ? 'Saving…' : 'Save and continue'}</Button>
     </form>
+  </AuthShell>;
+}
+
+function TemplateOfferPage({ athleteId, firstName }: { athleteId: number; firstName: string }) {
+  const apply = useApplyFiveThreeOne();
+  const [, setLocation] = useLocation();
+  const qc = useQueryClient();
+  const [error, setError] = useState('');
+  const dismiss = () => { sessionStorage.removeItem('sn-offer-531'); setLocation('/athlete'); };
+  const build = () => {
+    setError('');
+    apply.mutate({ athleteId }, { onSuccess: () => { qc.invalidateQueries({ queryKey: getGetProgramQueryKey(athleteId) }); dismiss(); }, onError: e => setError(e instanceof Error ? e.message : 'Could not build the program.') });
+  };
+  return <AuthShell eyebrow="Ready to train" title={<>One click away, {firstName}.</>}>
+    <p className="mt-2 text-sm text-muted-foreground">Want to start with the 5/3/1 program, built instantly from the numbers you just entered? A full 4-week cycle, ready to follow.</p>
+    <div className="mt-8 space-y-3">
+      {error && <p className="rounded-lg bg-destructive/10 p-3 text-xs font-semibold text-destructive" data-testid="status-offer-error">{error}</p>}
+      <Button className="w-full py-3" onClick={build} disabled={apply.isPending} data-testid="button-offer-531-yes">{apply.isPending ? 'Building…' : 'Yes, build my 5/3/1 program'}</Button>
+      <button onClick={dismiss} className="w-full rounded-xl border border-border py-3 text-sm font-bold text-muted-foreground hover:bg-muted" data-testid="button-offer-531-skip">Skip for now</button>
+    </div>
   </AuthShell>;
 }
 
@@ -99,6 +119,7 @@ function Shell({ children }: { children: ReactNode }) {
   if (isLoading) return <div className="grid min-h-[100dvh] place-items-center bg-background"><Skeleton className="h-12 w-48" /></div>;
   if (!user) return <Redirect to="/login" />;
   if (!user.profileComplete) return <OnboardingPage user={user} />;
+  if (user.role === 'athlete' && sessionStorage.getItem('sn-offer-531')) return <TemplateOfferPage athleteId={user.id} firstName={user.firstName} />;
   return <div className="sn-noise min-h-[100dvh] bg-background text-foreground">
     <aside className={cx('fixed inset-y-0 left-0 z-40 flex w-[250px] flex-col border-r border-sidebar-border bg-sidebar px-4 py-5 text-sidebar-foreground transition-transform md:translate-x-0', mobileOpen ? 'translate-x-0' : '-translate-x-full')}>
       <div className="px-2"><Logo light /></div>
