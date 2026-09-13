@@ -9,9 +9,10 @@ export interface PersonalRecords {
   squat: number | null;
   bench: number | null;
   deadlift: number | null;
+  press: number | null;
 }
 
-const emptyRecords = (): PersonalRecords => ({ squat: null, bench: null, deadlift: null });
+const emptyRecords = (): PersonalRecords => ({ squat: null, bench: null, deadlift: null, press: null });
 
 export interface AuthUser {
   id: number;
@@ -239,14 +240,64 @@ function seedDb(): LocalDb {
     programs: [],
     sessions: [],
     exerciseLibrary: [
+      // Squat
       { id: 1, name: 'Back Squat', category: 'squat', isMainLift: true },
-      { id: 2, name: 'Bench Press', category: 'bench', isMainLift: true },
-      { id: 3, name: 'Deadlift', category: 'deadlift', isMainLift: true },
-      { id: 4, name: 'Romanian Deadlift', category: 'deadlift', isMainLift: false },
-      { id: 5, name: 'Barbell Row', category: 'accessory', isMainLift: false },
-      { id: 6, name: 'Overhead Press', category: 'press', isMainLift: true },
+      { id: 2, name: 'Front Squat', category: 'squat', isMainLift: false },
+      { id: 3, name: 'Box Squat', category: 'squat', isMainLift: false },
+      { id: 4, name: 'Pause Squat', category: 'squat', isMainLift: false },
+      { id: 5, name: 'Safety Bar Squat', category: 'squat', isMainLift: false },
+      { id: 6, name: 'Bulgarian Split Squat', category: 'squat', isMainLift: false },
+      { id: 7, name: 'Leg Press', category: 'squat', isMainLift: false },
+      { id: 8, name: 'Walking Lunge', category: 'squat', isMainLift: false },
+      // Bench
+      { id: 9, name: 'Bench Press', category: 'bench', isMainLift: true },
+      { id: 10, name: 'Close-Grip Bench Press', category: 'bench', isMainLift: false },
+      { id: 11, name: 'Incline Bench Press', category: 'bench', isMainLift: false },
+      { id: 12, name: 'Spoto Press', category: 'bench', isMainLift: false },
+      { id: 13, name: 'Board Press', category: 'bench', isMainLift: false },
+      { id: 14, name: 'Dumbbell Bench Press', category: 'bench', isMainLift: false },
+      { id: 15, name: 'Push-Up', category: 'bench', isMainLift: false },
+      // Deadlift
+      { id: 16, name: 'Deadlift', category: 'deadlift', isMainLift: true },
+      { id: 17, name: 'Sumo Deadlift', category: 'deadlift', isMainLift: false },
+      { id: 18, name: 'Romanian Deadlift', category: 'deadlift', isMainLift: false },
+      { id: 19, name: 'Deficit Deadlift', category: 'deadlift', isMainLift: false },
+      { id: 20, name: 'Rack Pull', category: 'deadlift', isMainLift: false },
+      { id: 21, name: 'Good Morning', category: 'deadlift', isMainLift: false },
+      { id: 22, name: 'Stiff-Leg Deadlift', category: 'deadlift', isMainLift: false },
+      // Press
+      { id: 23, name: 'Overhead Press', category: 'press', isMainLift: true },
+      { id: 24, name: 'Push Press', category: 'press', isMainLift: false },
+      { id: 25, name: 'Seated Dumbbell Press', category: 'press', isMainLift: false },
+      { id: 26, name: 'Arnold Press', category: 'press', isMainLift: false },
+      { id: 27, name: 'Lateral Raise', category: 'press', isMainLift: false },
+      // Pull / back
+      { id: 28, name: 'Barbell Row', category: 'pull', isMainLift: false },
+      { id: 29, name: 'Pendlay Row', category: 'pull', isMainLift: false },
+      { id: 30, name: 'Pull-Up', category: 'pull', isMainLift: false },
+      { id: 31, name: 'Chin-Up', category: 'pull', isMainLift: false },
+      { id: 32, name: 'Lat Pulldown', category: 'pull', isMainLift: false },
+      { id: 33, name: 'Seated Cable Row', category: 'pull', isMainLift: false },
+      { id: 34, name: 'Face Pull', category: 'pull', isMainLift: false },
+      // Accessory / arms
+      { id: 35, name: 'Barbell Curl', category: 'accessory', isMainLift: false },
+      { id: 36, name: 'Hammer Curl', category: 'accessory', isMainLift: false },
+      { id: 37, name: 'Triceps Pushdown', category: 'accessory', isMainLift: false },
+      { id: 38, name: 'Skull Crusher', category: 'accessory', isMainLift: false },
+      { id: 39, name: 'Dip', category: 'accessory', isMainLift: false },
+      // Posterior chain / legs
+      { id: 40, name: 'Hip Thrust', category: 'accessory', isMainLift: false },
+      { id: 41, name: 'Glute Ham Raise', category: 'accessory', isMainLift: false },
+      { id: 42, name: 'Leg Curl', category: 'accessory', isMainLift: false },
+      { id: 43, name: 'Leg Extension', category: 'accessory', isMainLift: false },
+      { id: 44, name: 'Calf Raise', category: 'accessory', isMainLift: false },
+      // Core
+      { id: 45, name: 'Plank', category: 'core', isMainLift: false },
+      { id: 46, name: 'Ab Wheel Rollout', category: 'core', isMainLift: false },
+      { id: 47, name: 'Hanging Leg Raise', category: 'core', isMainLift: false },
+      { id: 48, name: 'Cable Woodchop', category: 'core', isMainLift: false },
     ],
-    nextId: 1,
+    nextId: 49,
   };
 }
 
@@ -256,12 +307,14 @@ function clone<T>(value: T): T {
 }
 
 function normalizeDb(db: LocalDb): LocalDb {
-  for (const user of db.users as Array<{ records?: PersonalRecords; powerliftingSince?: string | null }>) {
+  for (const user of db.users as Array<{ records?: Partial<PersonalRecords>; powerliftingSince?: string | null }>) {
     if (!user.records) user.records = emptyRecords();
+    else if (user.records.press === undefined) user.records.press = null;
     if (user.powerliftingSince === undefined) user.powerliftingSince = null;
   }
-  for (const athlete of db.athletes as Array<{ records?: PersonalRecords; powerliftingSince?: string | null }>) {
+  for (const athlete of db.athletes as Array<{ records?: Partial<PersonalRecords>; powerliftingSince?: string | null }>) {
     if (!athlete.records) athlete.records = emptyRecords();
+    else if (athlete.records.press === undefined) athlete.records.press = null;
     if (athlete.powerliftingSince === undefined) athlete.powerliftingSince = null;
   }
   return db;
@@ -423,7 +476,15 @@ export function useRegister() {
         db.programs.push({ id: id * 10, athleteId: id, name: 'New strength cycle', method: 'Custom', trainingMaxes: { squat: 0, bench: 0, deadlift: 0 }, blocks: [] });
       }
       writeDb(db);
-      window.localStorage.setItem(USER_KEY, String(id));
+      // Only auto sign-in the very first account (the coach). For every account
+      // created after that, we do NOT touch the current session — otherwise,
+      // if a coach shares the invite link and an athlete signs up on the SAME
+      // browser/device as the coach, it would silently kick the coach out and
+      // replace them with the new athlete (this was a real bug: creating an
+      // athlete made the coach's roster look empty because the coach was no
+      // longer the signed-in user at all). The new athlete simply signs in
+      // normally afterwards, from their own device.
+      if (role === 'coach') window.localStorage.setItem(USER_KEY, String(id));
       const { password: _password, ...safeUser } = user;
       return safeUser;
     },
@@ -524,7 +585,6 @@ export function useListExerciseLibrary() {
   return localQuery(getListExerciseLibraryQueryKey(), () => readDb().exerciseLibrary);
 }
 
-/** The signed-in person fills in their own profile (weight class / coaching focus, body weight). */
 /** The signed-in person fills in or edits their own profile: weight class, body weight, current 1RMs, and how long they've trained. Used both for the mandatory first-time onboarding and for later edits from Settings. */
 export function useCompleteProfile() {
   const queryClient = useQueryClient();
@@ -580,6 +640,145 @@ export function useCreateSession() {
     db.sessions.push(session);
     writeDb(db);
     return session;
+  });
+}
+
+/**
+ * Jim Wendler's 5/3/1 "Triumvirat" template: 4 training days a week (Overhead
+ * Press, Deadlift, Bench Press, Squat), one 4-week cycle. Training max = 90%
+ * of the athlete's current 1RM. Percentages/reps per week follow the
+ * published program exactly (last set of weeks 1-3 is AMRAP; week 4 is the
+ * deload). Requires the athlete to already have at least one lift recorded
+ * (see records / Settings / Edit athlete).
+ */
+export function useApplyFiveThreeOne() {
+  return localMutation(({ athleteId }: { athleteId: number }) => {
+    const db = readDb();
+    const athlete = db.athletes.find(item => item.id === athleteId);
+    if (!athlete) throw new Error('Athlete not found');
+    const r = athlete.records;
+    if (!r.squat && !r.bench && !r.deadlift && !r.press) throw new Error("Set this athlete's current lifts first (Edit athlete, or ask them to fill it in from Settings).");
+    const round = (v: number) => Math.round(v / 2.5) * 2.5;
+    const tm = { squat: round((r.squat ?? 0) * 0.9), bench: round((r.bench ?? 0) * 0.9), deadlift: round((r.deadlift ?? 0) * 0.9), press: round((r.press ?? 0) * 0.9) };
+    const weeks: Array<{ label: string; percents: number[]; reps: number[]; deload: boolean }> = [
+      { label: 'Week 1 · 3x5', percents: [65, 75, 85], reps: [5, 5, 5], deload: false },
+      { label: 'Week 2 · 3x3', percents: [70, 80, 90], reps: [3, 3, 3], deload: false },
+      { label: 'Week 3 · 5/3/1', percents: [75, 85, 95], reps: [5, 3, 1], deload: false },
+      { label: 'Week 4 · Deload', percents: [40, 50, 60], reps: [5, 5, 5], deload: true },
+    ];
+    const days: Array<{ key: keyof typeof tm; name: string; category: string; accessories: Array<[string, string, number]> }> = [
+      { key: 'press', name: 'Overhead Press', category: 'press', accessories: [['Dip', 'accessory', 10], ['Chin-Up', 'pull', 10]] },
+      { key: 'deadlift', name: 'Deadlift', category: 'deadlift', accessories: [['Good Morning', 'deadlift', 12], ['Leg Extension', 'accessory', 15]] },
+      { key: 'bench', name: 'Bench Press', category: 'bench', accessories: [['Dumbbell Bench Press', 'bench', 10], ['Seated Cable Row', 'pull', 10]] },
+      { key: 'squat', name: 'Back Squat', category: 'squat', accessories: [['Leg Press', 'squat', 15], ['Leg Curl', 'accessory', 10]] },
+    ];
+    let program = db.programs.find(item => item.athleteId === athleteId);
+    if (!program) { program = { id: db.nextId++, athleteId, name: '5/3/1 · Triumvirat', method: '5/3/1 (Wendler)', trainingMaxes: { squat: tm.squat, bench: tm.bench, deadlift: tm.deadlift }, blocks: [] }; db.programs.push(program); }
+    // Clear any sessions from a previous template run for this program, so re-applying doesn't duplicate weeks.
+    db.sessions = db.sessions.filter(item => item.programId !== program!.id);
+    program.name = '5/3/1 · Triumvirat';
+    program.method = '5/3/1 (Wendler) — training max = 90% of 1RM';
+    program.trainingMaxes = { squat: tm.squat, bench: tm.bench, deadlift: tm.deadlift };
+    const startDate = new Date();
+    weeks.forEach((week, weekIdx) => {
+      days.forEach((day, dayIdx) => {
+        const sessionId = db.nextId++;
+        const mainTM = tm[day.key];
+        const mainExercises: Exercise[] = week.percents.map((p, i) => ({
+          id: db.nextId++, sessionId, name: day.name, category: day.category, order: i + 1,
+          sets: 1, reps: week.reps[i], loadMode: 'percentage', loadValue: mainTM ? round(mainTM * p / 100) : null, percentage: p, targetRpe: null, restSeconds: 180, tempo: null,
+          notes: !week.deload && i === week.percents.length - 1 ? 'AMRAP — as many good reps as possible' : null,
+          completed: false, actualLoad: null, actualReps: null, actualRpe: null, comment: null,
+        }));
+        const accessoryExercises: Exercise[] = day.accessories.map(([name, category, reps], i) => ({
+          id: db.nextId++, sessionId, name, category, order: mainExercises.length + i + 1,
+          sets: 5, reps, loadMode: 'fixed', loadValue: null, percentage: null, targetRpe: 7, restSeconds: 90, tempo: null,
+          notes: 'Pick a challenging weight for the rep range.',
+          completed: false, actualLoad: null, actualReps: null, actualRpe: null, comment: null,
+        }));
+        const date = new Date(startDate);
+        date.setDate(date.getDate() + weekIdx * 7 + dayIdx * 2);
+        const session: TrainingSession = {
+          id: sessionId, athleteId, programId: program!.id, name: `${day.name} day`,
+          sessionDate: date.toISOString().slice(0, 10), status: 'planned', notes: week.label, weekNumber: weekIdx + 1,
+          exercises: [...mainExercises, ...accessoryExercises],
+        };
+        db.sessions.push(session);
+      });
+    });
+    writeDb(db);
+    return program;
+  });
+}
+
+/**
+ * A 3-day full-body powerlifting split: efficient for lifters who don't want
+ * a 4-6 day SBD split, following the "top set / back-off" and progressive
+ * overload principles (each week's percentages climb by 2 points). Day 1 and
+ * 2 build volume on one main lift each plus assistance work; Day 3 is a
+ * heavy Squat/Bench/Deadlift day. Requires the athlete's current squat,
+ * bench and deadlift to be recorded.
+ */
+export function useApplyThreeDaySBD() {
+  return localMutation(({ athleteId }: { athleteId: number }) => {
+    const db = readDb();
+    const athlete = db.athletes.find(item => item.id === athleteId);
+    if (!athlete) throw new Error('Athlete not found');
+    const r = athlete.records;
+    if (!r.squat && !r.bench && !r.deadlift) throw new Error("Set this athlete's current squat, bench, and deadlift first (Edit athlete, or ask them to fill it in from Settings).");
+    const oneRM = { squat: r.squat ?? 0, bench: r.bench ?? 0, deadlift: r.deadlift ?? 0 };
+    const round = (v: number) => Math.round(v / 2.5) * 2.5;
+    const pct = (lift: keyof typeof oneRM, p: number) => (oneRM[lift] ? round((oneRM[lift] * p) / 100) : null);
+
+    let program = db.programs.find(item => item.athleteId === athleteId);
+    if (!program) { program = { id: db.nextId++, athleteId, name: '3-Day Powerlifting (SBD)', method: 'Full-body 3-day split', trainingMaxes: oneRM, blocks: [] }; db.programs.push(program); }
+    db.sessions = db.sessions.filter(item => item.programId !== program!.id);
+    program.name = '3-Day Powerlifting (SBD)';
+    program.method = 'Full-body 3-day split — intensity climbs +2%/week';
+    program.trainingMaxes = oneRM;
+
+    const startDate = new Date();
+    const mkEx = (sessionId: number, order: number, name: string, category: string, sets: number, reps: number, loadMode: ExerciseLoadMode, loadValue: number | null, percentage: number | null, restSeconds: number, notes: string | null): Exercise => ({
+      id: db.nextId++, sessionId, name, category, order, sets, reps, loadMode, loadValue, percentage, targetRpe: null, restSeconds, tempo: null, notes,
+      completed: false, actualLoad: null, actualReps: null, actualRpe: null, comment: null,
+    });
+
+    for (let week = 1; week <= 4; week++) {
+      const bump = (week - 1) * 2; // progressive overload: +2 percentage points each week
+      const s1 = db.nextId++;
+      const day1: Exercise[] = [
+        mkEx(s1, 1, 'Bench Press', 'bench', 4, 8, 'percentage', pct('bench', 70 + bump), 70 + bump, 180, null),
+        mkEx(s1, 2, 'Back Squat', 'squat', 4, 8, 'percentage', pct('squat', 65 + bump), 65 + bump, 180, null),
+        mkEx(s1, 3, 'Overhead Press', 'press', 3, 7, 'fixed', null, null, 150, 'Pick a solid, not-maximal weight for 6-8 reps.'),
+        mkEx(s1, 4, 'Leg Extension', 'accessory', 3, 10, 'fixed', null, null, 60, 'Superset with Leg Curl.'),
+        mkEx(s1, 5, 'Leg Curl', 'accessory', 3, 10, 'fixed', null, null, 60, 'Superset with Leg Extension.'),
+      ];
+      const s2 = db.nextId++;
+      const day2: Exercise[] = [
+        mkEx(s2, 1, 'Deadlift', 'deadlift', 4, 6, 'percentage', pct('deadlift', 72 + bump), 72 + bump, 180, null),
+        mkEx(s2, 2, 'Pull-Up', 'pull', 4, 9, 'fixed', null, null, 150, null),
+        mkEx(s2, 3, 'Barbell Curl', 'accessory', 3, 10, 'fixed', null, null, 90, 'Superset with Triceps Pushdown.'),
+        mkEx(s2, 4, 'Triceps Pushdown', 'accessory', 3, 10, 'fixed', null, null, 90, 'Superset with Barbell Curl.'),
+        mkEx(s2, 5, 'Hammer Curl', 'accessory', 3, 10, 'fixed', null, null, 90, 'Superset with Skull Crusher.'),
+        mkEx(s2, 6, 'Skull Crusher', 'accessory', 3, 10, 'fixed', null, null, 90, 'Superset with Hammer Curl.'),
+      ];
+      const s3 = db.nextId++;
+      const wave: Array<{ p: number; reps: number }> = [{ p: 80, reps: 5 }, { p: 82, reps: 5 }, { p: 84, reps: 4 }, { p: 85, reps: 3 }];
+      const day3: Exercise[] = [];
+      (['squat', 'bench', 'deadlift'] as const).forEach((lift, liftIdx) => {
+        const name = lift === 'squat' ? 'Back Squat' : lift === 'bench' ? 'Bench Press' : 'Deadlift';
+        wave.forEach((w, i) => day3.push(mkEx(s3, liftIdx * wave.length + i + 1, name, lift, 1, w.reps, 'percentage', pct(lift, w.p + bump), w.p + bump, 210, i === wave.length - 1 ? 'Top set for today — prioritise solid technique.' : null)));
+      });
+      const mkSession = (id: number, name: string, exercises: Exercise[], dayOffset: number): TrainingSession => {
+        const date = new Date(startDate); date.setDate(date.getDate() + (week - 1) * 7 + dayOffset);
+        return { id, athleteId, programId: program!.id, name, sessionDate: date.toISOString().slice(0, 10), status: 'planned', notes: `Week ${week}`, weekNumber: week, exercises };
+      };
+      db.sessions.push(mkSession(s1, 'Full-Body A', day1, 0));
+      db.sessions.push(mkSession(s2, 'Pull & Arms', day2, 2));
+      db.sessions.push(mkSession(s3, 'SBD Heavy Day', day3, 4));
+    }
+    writeDb(db);
+    return program;
   });
 }
 
